@@ -398,12 +398,13 @@ MCP assists development; **runtime product traffic** uses `@mysimcha/*` packages
 
 | Item | Status |
 |------|--------|
-| Documentation | Done (canonical `/docs`) |
+| Documentation (canonical `/docs`, archive duplicates) | Done |
 | Monorepo tooling (pnpm, turbo, TS, ESLint, Prettier) | Done |
 | App / package shells | Done |
 | Minimal App Router boot (`web` / `admin` / `landing`) | Done |
 | Initial Prisma migration (`20260724000000_init`) | Done (apply when Postgres is up) |
 | Schema integrity FKs (`AnalyticsEvent` org, `Setting` user) | Done (`20260724010000_…`) |
+| GitHub Actions CI (install, lint, typecheck, test, prisma, build) | Done |
 | Authentication / database wiring in apps | **Not started** |
 | Business features | **Not started** |
 
