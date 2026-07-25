@@ -1,0 +1,876 @@
+// MySimcha Platform — Prisma schema (architecture foundation)
+// Multi-tenant strategy: shared DB/schema; organizationId on tenant data.
+// Brands are global product lines; Organizations are paying tenants.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// =============================================================================
+// Enums
+// =============================================================================
+
+enum UserStatus {
+  ACTIVE
+  DISABLED
+  PENDING
+}
+
+enum MembershipRole {
+  OWNER
+  ADMIN
+  EDITOR
+  VIEWER
+}
+
+enum PlatformRole {
+  PLATFORM_SUPER
+  PLATFORM_SUPPORT
+  PLATFORM_BILLING
+  PLATFORM_READONLY
+}
+
+enum EventStatus {
+  DRAFT
+  SCHEDULED
+  PUBLISHED
+  ARCHIVED
+}
+
+enum InvitationStatus {
+  DRAFT
+  SCHEDULED
+  SENT
+  OPENED
+  REVOKED
+  EXPIRED
+}
+
+enum InvitationChannel {
+  EMAIL
+  SMS
+  WHATSAPP
+  LINK
+}
+
+enum RsvpStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+  MAYBE
+}
+
+enum MediaType {
+  IMAGE
+  VIDEO
+  AUDIO
+  DOCUMENT
+}
+
+enum MediaProvider {
+  CLOUDINARY
+  SUPABASE
+  OTHER
+}
+
+enum SubscriptionStatus {
+  TRIALING
+  ACTIVE
+  PAST_DUE
+  CANCELED
+  INCOMPLETE
+  UNPAID
+}
+
+enum InvoiceStatus {
+  DRAFT
+  OPEN
+  PAID
+  VOID
+  UNCOLLECTIBLE
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCEEDED
+  FAILED
+  REFUNDED
+}
+
+enum NotificationChannel {
+  EMAIL
+  SMS
+  WHATSAPP
+  PUSH
+  IN_APP
+}
+
+enum NotificationStatus {
+  QUEUED
+  SENT
+  DELIVERED
+  FAILED
+  CANCELED
+}
+
+enum SettingScope {
+  PLATFORM
+  BRAND
+  ORGANIZATION
+  USER
+  EVENT
+}
+
+enum MessageVisibility {
+  PRIVATE
+  HOSTS
+  PUBLIC
+}
+
+enum QrCodePurpose {
+  INVITATION
+  CHECK_IN
+  ALBUM
+  CUSTOM
+}
+
+// =============================================================================
+// Auth.js tables
+// =============================================================================
+
+model User {
+  id            String     @id @default(uuid()) @db.Uuid
+  name          String?
+  email         String     @unique
+  emailVerified DateTime?
+  image         String?
+  locale        String     @default("en")
+  status        UserStatus @default(ACTIVE)
+  platformRole  PlatformRole?
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+  deletedAt     DateTime?
+
+  accounts      Account[]
+  sessions      Session[]
+  memberships   Membership[]
+  settings      Setting[]
+  auditLogs     AuditLog[]
+  messagesSent  Message[]  @relation("MessageSender")
+
+  @@index([status])
+  @@index([createdAt])
+}
+
+model Account {
+  id                String  @id @default(uuid()) @db.Uuid
+  userId            String  @db.Uuid
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+model Session {
+  id           String   @id @default(uuid()) @db.Uuid
+  sessionToken String   @unique
+  userId       String   @db.Uuid
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// =============================================================================
+// Tenancy & branding
+// =============================================================================
+
+model Organization {
+  id           String    @id @default(uuid()) @db.Uuid
+  name         String
+  slug         String    @unique
+  billingEmail String?
+  locale       String    @default("en")
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  deletedAt    DateTime?
+
+  memberships   Membership[]
+  events        Event[]
+  mediaAssets   MediaAsset[]
+  subscriptions Subscription[]
+  invoices      Invoice[]
+  settings      Setting[]
+  analyticsEvents AnalyticsEvent[]
+  auditLogs     AuditLog[]
+  aiContents    AiContent[]
+  notifications Notification[]
+
+  @@index([createdAt])
+}
+
+model Membership {
+  id             String         @id @default(uuid()) @db.Uuid
+  organizationId String         @db.Uuid
+  userId         String         @db.Uuid
+  role           MembershipRole @default(EDITOR)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, userId])
+  @@index([userId])
+  @@index([organizationId, role])
+}
+
+model Brand {
+  id            String   @id @default(uuid()) @db.Uuid
+  slug          String   @unique
+  name          String
+  displayName   String
+  description   String?
+  defaultLocale String   @default("en")
+  locales       String[] @default(["en"])
+  /// Theme.slug used when an event does not override theme
+  defaultThemeSlug String @default("luxury-gold")
+  assetBaseUrl  String?
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  domains   BrandDomain[]
+  themes    Theme[]
+  templates Template[]
+  events    Event[]
+  settings  Setting[]
+
+  @@index([isActive])
+}
+
+model BrandDomain {
+  id        String   @id @default(uuid()) @db.Uuid
+  brandId   String   @db.Uuid
+  domain    String   @unique
+  isPrimary Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  brand Brand @relation(fields: [brandId], references: [id], onDelete: Cascade)
+
+  @@index([brandId])
+}
+
+model Theme {
+  id          String   @id @default(uuid()) @db.Uuid
+  brandId     String   @db.Uuid
+  slug        String
+  name        String
+  description String?
+  tokens      Json
+  motion      Json?
+  isDefault   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  brand     Brand      @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  templates Template[]
+  events    Event[]
+
+  @@unique([brandId, slug])
+  @@index([brandId, isDefault])
+}
+
+model Template {
+  id          String   @id @default(uuid()) @db.Uuid
+  brandId     String   @db.Uuid
+  themeId     String?  @db.Uuid
+  slug        String
+  name        String
+  description String?
+  previewUrl  String?
+  schema      Json
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  brand  Brand  @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  theme  Theme? @relation(fields: [themeId], references: [id])
+  events Event[]
+
+  @@unique([brandId, slug])
+  @@index([brandId, isActive])
+}
+
+// =============================================================================
+// Events & experience builder
+// =============================================================================
+
+model Event {
+  id             String      @id @default(uuid()) @db.Uuid
+  organizationId String      @db.Uuid
+  brandId        String      @db.Uuid
+  themeId        String?     @db.Uuid
+  templateId     String?     @db.Uuid
+  name           String
+  publicSlug     String?     @unique
+  status         EventStatus @default(DRAFT)
+  locale         String      @default("en")
+  timezone       String      @default("UTC")
+  startsAt       DateTime?
+  endsAt         DateTime?
+  venueName      String?
+  venueAddress   String?
+  venuePlaceId   String?
+  venueLat       Float?
+  venueLng       Float?
+  coverMediaId   String?     @db.Uuid
+  publishedAt    DateTime?
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+  deletedAt      DateTime?
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  brand        Brand        @relation(fields: [brandId], references: [id])
+  theme        Theme?       @relation(fields: [themeId], references: [id])
+  template     Template?    @relation(fields: [templateId], references: [id])
+  coverMedia   MediaAsset?  @relation("EventCover", fields: [coverMediaId], references: [id])
+
+  families      Family[]
+  guests        Guest[]
+  invitations   Invitation[]
+  pages         Page[]
+  animations    Animation[]
+  albums        Album[]
+  mediaAssets   MediaAsset[] @relation("EventMedia")
+  rsvps         Rsvp[]
+  messages      Message[]
+  guestBooks    GuestBookEntry[]
+  qrCodes       QrCode[]
+  notifications Notification[]
+  aiContents    AiContent[]
+  settings      Setting[]
+  analytics     AnalyticsEvent[]
+
+  @@index([organizationId, createdAt])
+  @@index([organizationId, status])
+  @@index([brandId, status])
+  @@index([startsAt])
+}
+
+model Page {
+  id        String   @id @default(uuid()) @db.Uuid
+  eventId   String   @db.Uuid
+  path      String
+  title     String
+  sortOrder Int      @default(0)
+  isHome    Boolean  @default(false)
+  seo       Json?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+
+  event    Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  sections Section[]
+
+  @@unique([eventId, path])
+  @@index([eventId, sortOrder])
+}
+
+model Section {
+  id           String   @id @default(uuid()) @db.Uuid
+  pageId       String   @db.Uuid
+  type         String
+  sortOrder    Int      @default(0)
+  props        Json?
+  animationId  String?  @db.Uuid
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  page      Page       @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  animation Animation? @relation(fields: [animationId], references: [id])
+  blocks    Block[]
+
+  @@index([pageId, sortOrder])
+}
+
+model Block {
+  id          String   @id @default(uuid()) @db.Uuid
+  sectionId   String   @db.Uuid
+  blockType   String
+  sortOrder   Int      @default(0)
+  content     Json
+  animationId String?  @db.Uuid
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  section   Section    @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  animation Animation? @relation(fields: [animationId], references: [id])
+
+  @@index([sectionId, sortOrder])
+  @@index([blockType])
+}
+
+model Animation {
+  id        String   @id @default(uuid()) @db.Uuid
+  eventId   String   @db.Uuid
+  name      String
+  engine    String
+  config    Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  event    Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  sections Section[]
+  blocks   Block[]
+
+  @@index([eventId])
+}
+
+// =============================================================================
+// Guests, invitations, RSVP, social
+// =============================================================================
+
+model Family {
+  id        String   @id @default(uuid()) @db.Uuid
+  eventId   String   @db.Uuid
+  name      String
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  event  Event   @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  guests Guest[]
+
+  @@index([eventId])
+}
+
+model Guest {
+  id             String   @id @default(uuid()) @db.Uuid
+  eventId        String   @db.Uuid
+  familyId       String?  @db.Uuid
+  email          String?
+  phone          String?
+  firstName      String
+  lastName       String?
+  locale         String?
+  seats          Int      @default(1)
+  tags           String[] @default([])
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  deletedAt      DateTime?
+
+  event       Event         @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  family      Family?       @relation(fields: [familyId], references: [id])
+  invitations Invitation[]
+  rsvps       Rsvp[]
+  messages    Message[]
+  guestBooks  GuestBookEntry[]
+
+  @@index([eventId])
+  @@index([eventId, email])
+  @@index([familyId])
+}
+
+model Invitation {
+  id          String            @id @default(uuid()) @db.Uuid
+  eventId     String            @db.Uuid
+  guestId     String            @db.Uuid
+  channel     InvitationChannel @default(LINK)
+  token       String            @unique
+  status      InvitationStatus  @default(DRAFT)
+  sentAt      DateTime?
+  openedAt    DateTime?
+  expiresAt   DateTime?
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  guest Guest @relation(fields: [guestId], references: [id], onDelete: Cascade)
+  rsvps Rsvp[]
+  qrCodes QrCode[]
+
+  @@index([eventId, status])
+  @@index([guestId])
+}
+
+model Rsvp {
+  id           String     @id @default(uuid()) @db.Uuid
+  eventId      String     @db.Uuid
+  guestId      String     @db.Uuid
+  invitationId String?    @db.Uuid
+  status       RsvpStatus @default(PENDING)
+  partySize    Int?
+  message      String?
+  answers      Json?
+  respondedAt  DateTime?
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  event      Event       @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  guest      Guest       @relation(fields: [guestId], references: [id], onDelete: Cascade)
+  invitation Invitation? @relation(fields: [invitationId], references: [id])
+
+  @@unique([eventId, guestId])
+  @@index([eventId, status])
+}
+
+model Message {
+  id          String            @id @default(uuid()) @db.Uuid
+  eventId     String            @db.Uuid
+  guestId     String?           @db.Uuid
+  senderUserId String?          @db.Uuid
+  body        String
+  visibility  MessageVisibility @default(HOSTS)
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  deletedAt   DateTime?
+
+  event  Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  guest  Guest? @relation(fields: [guestId], references: [id])
+  sender User?  @relation("MessageSender", fields: [senderUserId], references: [id])
+
+  @@index([eventId, createdAt])
+}
+
+model GuestBookEntry {
+  id         String   @id @default(uuid()) @db.Uuid
+  eventId    String   @db.Uuid
+  guestId    String?  @db.Uuid
+  authorName String
+  body       String
+  isApproved Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  deletedAt  DateTime?
+
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  guest Guest? @relation(fields: [guestId], references: [id])
+
+  @@index([eventId, isApproved, createdAt])
+}
+
+model QrCode {
+  id           String       @id @default(uuid()) @db.Uuid
+  eventId      String       @db.Uuid
+  invitationId String?      @db.Uuid
+  purpose      QrCodePurpose
+  payload      String
+  imageUrl     String?
+  createdAt    DateTime     @default(now())
+
+  event      Event       @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  invitation Invitation? @relation(fields: [invitationId], references: [id])
+
+  @@index([eventId, purpose])
+}
+
+// =============================================================================
+// Media
+// =============================================================================
+
+model MediaAsset {
+  id             String        @id @default(uuid()) @db.Uuid
+  organizationId String        @db.Uuid
+  eventId        String?       @db.Uuid
+  provider       MediaProvider @default(CLOUDINARY)
+  providerId     String
+  type           MediaType
+  url            String
+  secureUrl      String?
+  thumbnailUrl   String?
+  mimeType       String?
+  width          Int?
+  height         Int?
+  durationMs     Int?
+  bytes          Int?
+  alt            String?
+  meta           Json?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  deletedAt      DateTime?
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  event        Event?       @relation("EventMedia", fields: [eventId], references: [id])
+  coverFor     Event[]      @relation("EventCover")
+  albumItems   AlbumItem[]
+
+  @@unique([provider, providerId])
+  @@index([organizationId, createdAt])
+  @@index([eventId, type])
+}
+
+model Album {
+  id          String   @id @default(uuid()) @db.Uuid
+  eventId     String   @db.Uuid
+  name        String
+  description String?
+  isPublic    Boolean  @default(false)
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  deletedAt   DateTime?
+
+  event Event       @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  items AlbumItem[]
+
+  @@index([eventId, sortOrder])
+}
+
+model AlbumItem {
+  id           String   @id @default(uuid()) @db.Uuid
+  albumId      String   @db.Uuid
+  mediaAssetId String   @db.Uuid
+  sortOrder    Int      @default(0)
+  caption      String?
+  createdAt    DateTime @default(now())
+
+  album      Album      @relation(fields: [albumId], references: [id], onDelete: Cascade)
+  mediaAsset MediaAsset @relation(fields: [mediaAssetId], references: [id], onDelete: Cascade)
+
+  @@unique([albumId, mediaAssetId])
+  @@index([albumId, sortOrder])
+}
+
+// =============================================================================
+// Billing
+// =============================================================================
+
+model Plan {
+  id              String   @id @default(uuid()) @db.Uuid
+  slug            String   @unique
+  name            String
+  description     String?
+  stripeProductId String?  @unique
+  features        Json
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  prices        PlanPrice[]
+  subscriptions Subscription[]
+}
+
+model PlanPrice {
+  id            String   @id @default(uuid()) @db.Uuid
+  planId        String   @db.Uuid
+  stripePriceId String   @unique
+  currency      String
+  interval      String
+  unitAmount    Int
+  brandSlug     String?
+  createdAt     DateTime @default(now())
+
+  plan Plan @relation(fields: [planId], references: [id], onDelete: Cascade)
+
+  @@index([planId])
+  @@index([brandSlug])
+}
+
+model Subscription {
+  id                   String             @id @default(uuid()) @db.Uuid
+  organizationId       String             @db.Uuid
+  planId               String             @db.Uuid
+  status               SubscriptionStatus
+  stripeCustomerId     String?
+  stripeSubscriptionId String?            @unique
+  currentPeriodStart   DateTime?
+  currentPeriodEnd     DateTime?
+  cancelAtPeriodEnd    Boolean            @default(false)
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  plan         Plan         @relation(fields: [planId], references: [id])
+  invoices     Invoice[]
+
+  @@index([organizationId, status])
+  @@index([stripeCustomerId])
+}
+
+model Invoice {
+  id              String        @id @default(uuid()) @db.Uuid
+  organizationId  String        @db.Uuid
+  subscriptionId  String?       @db.Uuid
+  stripeInvoiceId String?       @unique
+  status          InvoiceStatus
+  currency        String
+  amountDue       Int
+  amountPaid      Int           @default(0)
+  hostedUrl       String?
+  pdfUrl          String?
+  periodStart     DateTime?
+  periodEnd       DateTime?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  subscription Subscription? @relation(fields: [subscriptionId], references: [id])
+  payments     Payment[]
+
+  @@index([organizationId, createdAt])
+}
+
+model Payment {
+  id              String        @id @default(uuid()) @db.Uuid
+  invoiceId       String        @db.Uuid
+  stripePaymentId String?       @unique
+  status          PaymentStatus
+  amount          Int
+  currency        String
+  paidAt          DateTime?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@index([invoiceId, status])
+}
+
+// =============================================================================
+// Notifications, AI, i18n, analytics, settings, audit
+// =============================================================================
+
+model Notification {
+  id             String              @id @default(uuid()) @db.Uuid
+  organizationId String?             @db.Uuid
+  eventId        String?             @db.Uuid
+  channel        NotificationChannel
+  status         NotificationStatus  @default(QUEUED)
+  toAddress      String
+  templateKey    String?
+  payload        Json?
+  providerId     String?
+  error          String?
+  scheduledAt    DateTime?
+  sentAt         DateTime?
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+
+  organization Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  event        Event?        @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@index([status, createdAt])
+  @@index([organizationId, createdAt])
+  @@index([eventId])
+}
+
+model AiContent {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @db.Uuid
+  eventId        String?  @db.Uuid
+  purpose        String
+  provider       String
+  model          String
+  promptHash     String
+  input          Json?
+  output         Json
+  tokensIn       Int?
+  tokensOut      Int?
+  createdAt      DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  event        Event?       @relation(fields: [eventId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, createdAt])
+  @@index([eventId, purpose])
+}
+
+model Translation {
+  id        String   @id @default(uuid()) @db.Uuid
+  namespace String
+  key       String
+  locale    String
+  value     String
+  /// Scope discriminator: platform | brand:<id> | event:<id>
+  scopeKey  String   @default("platform")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([namespace, key, locale, scopeKey])
+  @@index([locale, namespace])
+}
+
+model AnalyticsEvent {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String?  @db.Uuid
+  eventId        String?  @db.Uuid
+  name           String
+  properties     Json?
+  distinctId     String?
+  createdAt      DateTime @default(now())
+
+  organization Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  event        Event?        @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@index([eventId, name, createdAt])
+  @@index([organizationId, createdAt])
+}
+
+model Setting {
+  id             String       @id @default(uuid()) @db.Uuid
+  scope          SettingScope
+  key            String
+  value          Json
+  organizationId String?      @db.Uuid
+  brandId        String?      @db.Uuid
+  userId         String?      @db.Uuid
+  eventId        String?      @db.Uuid
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  organization Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  brand        Brand?        @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  user         User?         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  event        Event?        @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@index([scope, key])
+  @@index([organizationId, key])
+  @@index([brandId, key])
+  @@index([userId, key])
+  @@index([eventId, key])
+}
+
+model AuditLog {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String?  @db.Uuid
+  actorUserId    String?  @db.Uuid
+  action         String
+  resourceType   String
+  resourceId     String?
+  ipHash         String?
+  userAgent      String?
+  metadata       Json?
+  createdAt      DateTime @default(now())
+
+  organization Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  actor        User?         @relation(fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, createdAt])
+  @@index([actorUserId, createdAt])
+  @@index([action, createdAt])
+}

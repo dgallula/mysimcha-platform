@@ -1,0 +1,27 @@
+---
+description: MySimcha Platform foundation rules for Cursor agents
+alwaysApply: true
+---
+
+# MySimcha Platform — Editor & Agent Rules
+
+## Canonical documentation (always use these)
+
+- `AGENTS.md`
+- `CLAUDE.md`
+- `docs/product-vision.md`
+- `docs/architecture.md`
+- `docs/database.md`
+- `docs/security.md`
+- `docs/api.md`
+- `docs/development-guide.md`
+
+Do **not** use files under `docs/archive/` — they are historical duplicates.
+
+## Hard rules
+
+- Follow `AGENTS.md` and the canonical docs listed above.
+- Do not implement business features unless explicitly asked.
+- Keep package boundaries: Prisma → `@mysimcha/database`, Stripe → `@mysimcha/payments`, Cloudinary → `@mysimcha/media`, Twilio → `@mysimcha/notifications`, OpenAI → `@mysimcha/ai`, Google Maps → `@mysimcha/maps`.
+- Always scope tenant queries by `organizationId`.
+- Validate inputs with Zod; enforce RBAC via `@mysimcha/auth`.

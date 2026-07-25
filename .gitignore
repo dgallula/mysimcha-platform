@@ -1,0 +1,57 @@
+# Dependencies
+node_modules
+.pnpm-store
+
+# Builds
+dist
+build
+.next
+.turbo
+out
+*.tsbuildinfo
+
+# Env — commit examples only
+.env
+.env.local
+.env.*.local
+!.env.example
+!env/*.example
+
+# IDE
+.idea
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Logs & coverage
+logs
+*.log
+coverage
+playwright-report
+test-results
+
+# Docker volumes
+docker/data
+
+# Prisma local sqlite leftovers (if any)
+packages/database/prisma/*.db
+packages/database/prisma/*.db-journal
+
+# Secrets & keys
+*.pem
+*.key
+secrets/
+
+# Sentry
+.sentryclirc
+
+# Misc
+*.local
+.cache

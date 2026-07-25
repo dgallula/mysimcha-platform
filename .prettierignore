@@ -1,0 +1,10 @@
+node_modules
+.pnpm-store
+.next
+.turbo
+dist
+build
+coverage
+pnpm-lock.yaml
+docker/data
+*.tsbuildinfo

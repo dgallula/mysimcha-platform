@@ -1,0 +1,23 @@
+{
+  "name": "@mysimcha/config",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./tailwind": "./tailwind/preset.ts"
+  },
+  "scripts": {
+    "lint": "eslint src --max-warnings 0",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@mysimcha/shared": "workspace:*",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@mysimcha/tsconfig": "workspace:*",
+    "tailwindcss": "^3.4.17",
+    "typescript": "^5.7.2"
+  }
+}
