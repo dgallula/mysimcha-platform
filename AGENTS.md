@@ -14,7 +14,9 @@ All products share one codebase, backend, database, auth, payments, AI engine, a
 
 ## Current phase
 
-**Bootable app shells.** Minimal Next.js App Router apps exist for `web`, `admin`, and `landing`. Do **not** implement business features, authentication, database access in apps, fake data, or placeholder business logic unless explicitly asked.
+**Sprint 1 completed** — identity & multi-tenant.  
+**Sprint 2 completed** — auth rate limiting via `RateLimiter` + `MemoryRateLimiter` (no Redis).  
+Do **not** implement invitations, events, or other business features unless explicitly asked.
 
 ## Read first
 

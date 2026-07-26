@@ -21,7 +21,7 @@ Do **not** use files under `docs/archive/` — they are historical duplicates.
 ## Hard rules
 
 - Follow `AGENTS.md` and the canonical docs listed above.
-- Do not implement business features unless explicitly asked.
+- Sprint 1–2 completed (identity + in-memory auth rate limiting). Do not implement invitations/events unless asked. Do not introduce Redis unless explicitly approved.
 - Keep package boundaries: Prisma → `@mysimcha/database`, Stripe → `@mysimcha/payments`, Cloudinary → `@mysimcha/media`, Twilio → `@mysimcha/notifications`, OpenAI → `@mysimcha/ai`, Google Maps → `@mysimcha/maps`.
 - Always scope tenant queries by `organizationId`.
 - Validate inputs with Zod; enforce RBAC via `@mysimcha/auth`.

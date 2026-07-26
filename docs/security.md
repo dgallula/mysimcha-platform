@@ -12,17 +12,18 @@
 
 ## Authentication
 
-**Provider:** Auth.js (NextAuth v5) in `@mysimcha/auth`.
+**Provider:** Auth.js (NextAuth v5) in `@mysimcha/auth`.  
+**Sprint 1 status:** **completed** on `apps/web`.
 
 | Concern | Approach |
 |---------|----------|
-| Session | Database sessions or JWT (decision locked in auth package; prefer database sessions for revocation) |
-| Providers | Email magic link (Resend), Google, Apple (as needed) |
-| CSRF | Auth.js built-in |
-| Host trust | `AUTH_TRUST_HOST` only in known environments |
+| Session | JWT sessions (required by Auth.js Credentials). `Session` / `Account` tables remain for future OAuth / DB-session revocation. |
+| Providers | Email/password credentials. Later: magic link (Resend), Google, Apple as needed |
+| CSRF | Auth.js built-in for `/api/auth` |
+| Host trust | Prefer `AUTH_TRUST_HOST` only in known environments |
 | Cookies | `__Secure-` / `HttpOnly` / `SameSite=Lax` (Strict where possible) |
 
-Admin app uses the same identity provider with **stricter role gates** (`PLATFORM_*` roles).
+`apps/admin` is still an unauthenticated shell. Platform roles (`PLATFORM_*`) are modeled; admin auth UI is **not** wired yet.
 
 ---
 
@@ -74,15 +75,22 @@ Server Actions are treated as public endpoints — same validation and authz as 
 
 ## Rate limiting
 
-Redis sliding window (`@mysimcha/shared` / middleware):
+**Sprint 2:** Node-only, pluggable `RateLimiter` in `@mysimcha/shared`.
+
+| Piece | Location |
+|-------|----------|
+| Port (interface) | `RateLimiter` |
+| Dev / current prod driver | `MemoryRateLimiter` (in-process fixed window) |
+| Composition | `getRateLimiter()` / `setRateLimiter()` (DI) |
+| Auth guard | `assertAuthRateLimits()` in `@mysimcha/auth` |
+
+**Not in Sprint 2:** Redis, queues, or brokers. A future `RedisRateLimiter` can implement the same interface without changing login/register callers.
 
 | Surface | Default budget |
 |---------|----------------|
-| Auth endpoints | Low (e.g. 10 / 15 min / IP) |
-| Public RSVP | Moderate per event + IP |
-| Authenticated API | 100 / min / user |
-| Webhooks | Signature verify; high but idempotent |
-| AI endpoints | Strict per org plan entitlement |
+| Auth login/register | 10 / 15 min per IP **and** per email (`AUTH_RATE_LIMIT_*`) |
+| General catalog | `RATE_LIMIT_MAX` / `RATE_LIMIT_WINDOW_MS` (reserved) |
+| Public RSVP / AI | Later |
 
 ---
 

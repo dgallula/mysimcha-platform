@@ -4,8 +4,8 @@
 
 Define the production-grade technical architecture for a **scalable multi-brand SaaS** that powers premium digital emotional invitations.
 
-**Current phase:** bootable Next.js app shells.  
-Application business features are **not** implemented yet.
+**Current phase:** Sprint 1 completed; Sprint 2 auth rate limiting (**MemoryRateLimiter**, no Redis) completed.  
+**Next:** further work only when explicitly approved. Invitations, events, and other business features are **not** implemented.
 
 ## Quality bar
 
@@ -22,8 +22,7 @@ Priorities: scalability → security → maintainability → DX → performance 
 - Next.js 15 (App Router)
 - React 19
 - TypeScript
-- Tailwind CSS
-- shadcn/ui (via `@mysimcha/ui`)
+- Tailwind CSS + shadcn/ui via `@mysimcha/ui` (**planned**; web currently uses minimal inline styles)
 - Framer Motion / GSAP / Lottie (motion layer — later)
 
 ### Backend
@@ -31,32 +30,33 @@ Priorities: scalability → security → maintainability → DX → performance 
 - Next.js Server Actions / API Routes
 - Node.js
 - Prisma ORM
+- Auth.js (NextAuth v5) via `@mysimcha/auth`
 
 ### Data & cache
 
 - PostgreSQL (system of record)
-- Redis (sessions, rate limits, hot brand config, queues)
+- Redis (Compose available for local optional use; **not required in Sprint 2**). Rate limiting uses in-memory `MemoryRateLimiter` behind a `RateLimiter` interface. Redis may plug in later without changing callers. Sprint 1+ sessions remain **JWT**.
 
-### Integrations
+### Integrations (packages exist; SDKs mostly not wired yet)
 
-| Concern | Provider | Package |
-|---------|----------|---------|
-| Auth | Auth.js | `@mysimcha/auth` |
-| Media | Cloudinary | `@mysimcha/media` |
-| Payments | Stripe | `@mysimcha/payments` |
-| Email | Resend | `@mysimcha/emails` |
-| SMS / WhatsApp | Twilio | `@mysimcha/notifications` |
-| Maps | Google Maps | `@mysimcha/maps` |
-| AI | OpenAI | `@mysimcha/ai` |
-| Monitoring | Sentry | apps + shared instrumentation |
-| Analytics | PostHog | `@mysimcha/analytics` |
+| Concern | Provider | Package | Sprint 1 |
+|---------|----------|---------|----------|
+| Auth | Auth.js | `@mysimcha/auth` | **Done** (credentials + JWT) |
+| Media | Cloudinary | `@mysimcha/media` | Contract stub |
+| Payments | Stripe | `@mysimcha/payments` | Contract stub |
+| Email | Resend | `@mysimcha/emails` | Contract stub |
+| SMS / WhatsApp | Twilio | `@mysimcha/notifications` | Contract stub |
+| Maps | Google Maps | `@mysimcha/maps` | Contract stub |
+| AI | OpenAI | `@mysimcha/ai` | Contract stub |
+| Monitoring | Sentry | apps + shared | Env only |
+| Analytics | PostHog | `@mysimcha/analytics` | Contract stub |
 
 ### Delivery
 
 - Docker / Docker Compose (local Postgres + Redis)
-- Vercel (Next.js apps)
-- GitHub Actions (CI)
-- Playwright + Vitest (testing)
+- Vercel (Next.js apps) — planned deploy target
+- GitHub Actions CI (install → Prisma validate/generate → lint → typecheck → test → build)
+- Vitest (unit). Playwright when guest/product pages exist.
 
 ### Monorepo tooling
 
@@ -73,35 +73,30 @@ Priorities: scalability → security → maintainability → DX → performance 
 ```text
 mysimcha-platform/
 ├── apps/
-│   ├── web/                 # Customer app + guest invitation runtime
-│   ├── admin/               # Platform administration
-│   ├── landing/             # Multi-brand marketing
-│   └── docs/                # Technical documentation site
+│   ├── web/                 # Customer app (Sprint 1 auth + dashboard)
+│   ├── admin/               # Platform administration (shell)
+│   ├── landing/             # Multi-brand marketing (shell)
+│   └── docs/                # Technical documentation site (shell)
 ├── packages/
-│   ├── ui/                  # Design system
+│   ├── ui/                  # Design system (minimal Button)
 │   ├── database/            # Prisma + PostgreSQL access
 │   ├── auth/                # Authentication + RBAC
-│   ├── payments/            # Stripe
-│   ├── emails/              # Email templates + Resend
-│   ├── notifications/       # Twilio SMS / WhatsApp / push
-│   ├── media/               # Cloudinary
-│   ├── ai/                  # OpenAI gateway
-│   ├── maps/                # Google Maps
-│   ├── analytics/           # PostHog wrappers
-│   ├── branding/            # Brand / theme / domain engine
+│   ├── payments/            # Stripe (contract)
+│   ├── emails/              # Email (contract)
+│   ├── notifications/       # Twilio (contract)
+│   ├── media/               # Cloudinary (contract)
+│   ├── ai/                  # OpenAI (contract)
+│   ├── maps/                # Google Maps (contract)
+│   ├── analytics/           # PostHog (contract)
+│   ├── branding/            # Static brand registry (+ future DB resolve)
 │   ├── shared/              # Shared utils + Zod
-│   └── config/              # Shared config / Tailwind preset / env schema
+│   └── config/              # Env schema / Tailwind preset
 ├── tooling/
-│   └── typescript/          # Shared tsconfig bases
-├── env/                     # Environment templates by stage
-├── docs/                    # Architecture source of truth
-├── docker/                  # Container assets
-├── eslint.config.mjs
-├── .prettierrc.json
-├── .env.example
-├── pnpm-workspace.yaml
-├── turbo.json
-├── package.json
+│   └── typescript/
+├── env/
+├── docs/
+├── docker/
+├── .github/workflows/ci.yml
 ├── AGENTS.md
 ├── CLAUDE.md
 └── README.md
@@ -115,47 +110,37 @@ mysimcha-platform/
 
 | Folder | Responsibility | Must not |
 |--------|----------------|----------|
-| `apps/web` | Customer product + public guest invitation experiences | Own Stripe/Prisma/Cloudinary clients; fork per brand |
+| `apps/web` | Customer product + (future) guest invitation experiences | Own Stripe/Prisma/Cloudinary clients; fork per brand |
 | `apps/admin` | Platform ops, support, elevated RBAC | Be indexed by search engines; bypass audit logging |
 | `apps/landing` | Multi-domain marketing / SEO acquisition | Contain authenticated product logic |
 | `apps/docs` | Human-facing technical docs site | Replace `/docs` markdown as source of truth |
 
 Apps are **composition roots**: routing, layouts, and wiring packages together.
 
-**Current app status:** `web`, `admin`, `landing` (and `docs`) have minimal App Router shells (`layout`, `page`, `/api/health`) so `pnpm dev` / `pnpm build` / `pnpm typecheck` work. No authentication, database access, or business features yet.
+**Current app status**
+
+| App | Status |
+|-----|--------|
+| `web` | Sprint 1: `/login`, `/register`, `/dashboard`, `/api/auth/*`, `/api/health`; uses `@mysimcha/auth` + `@mysimcha/database` |
+| `admin` | Shell: home + `/api/health` (no auth yet) |
+| `landing` | Shell: home + `/api/health` |
+| `docs` | Shell: home + `/api/health` |
+
 ### `packages/`
 
-| Package | Responsibility |
-|---------|----------------|
-| `@mysimcha/ui` | Shared design-system primitives and tokens hooks |
-| `@mysimcha/database` | Prisma schema, client singleton, tenant helpers |
-| `@mysimcha/auth` | Auth.js surface + RBAC enforcement helpers |
-| `@mysimcha/payments` | Stripe contracts and future SDK wrapper |
-| `@mysimcha/emails` | Email template registry + Resend boundary |
-| `@mysimcha/notifications` | SMS / WhatsApp / push (Twilio) boundary |
-| `@mysimcha/media` | Cloudinary upload/transform contracts |
-| `@mysimcha/ai` | OpenAI / provider-agnostic AI gateway contracts |
-| `@mysimcha/maps` | Google Maps helpers |
-| `@mysimcha/analytics` | PostHog tracking vocabulary |
-| `@mysimcha/branding` | Domain → brand → theme → locale resolution |
-| `@mysimcha/shared` | Result types, IDs, permissions vocabulary, Zod-ready utils |
-| `@mysimcha/config` | Env schema, Tailwind preset, shared tooling config |
+| Package | Responsibility | Status |
+|---------|----------------|--------|
+| `@mysimcha/database` | Prisma schema, client, tenant helpers, user/org accessors, seed | **Sprint 1 done** |
+| `@mysimcha/auth` | Auth.js + password hashing + RBAC helpers | **Sprint 1 done** |
+| `@mysimcha/shared` | Result types, IDs, permissions, auth Zod schemas | **Sprint 1 done** |
+| `@mysimcha/branding` | Domain → brand → theme registry | Partial (static registry) |
+| `@mysimcha/ui` | Design-system primitives | Minimal (Button) |
+| `@mysimcha/config` | Env schema, Tailwind preset | Partial |
+| `@mysimcha/payments` / `emails` / `notifications` / `media` / `ai` / `maps` / `analytics` | Provider boundaries | Contract stubs |
 
-### `tooling/`
+### `tooling/` / `env/` / `docs/` / `docker/`
 
-Shared TypeScript configuration packages consumed by apps and libraries (`@mysimcha/tsconfig`).
-
-### `env/`
-
-Environment templates for development, staging, and production. Full catalog also in root `.env.example`.
-
-### `docs/`
-
-Architecture and product documentation — **source of truth** for agents and humans.
-
-### `docker/`
-
-Container definitions and local data volume placeholders.
+Unchanged roles: shared tsconfig, env templates, architecture source of truth, Compose assets.
 
 ---
 
@@ -166,25 +151,19 @@ These rules are mandatory. Violations are architecture bugs.
 ### Direction
 
 ```text
-apps/*  →  packages/*  →  @mysimcha/shared | @mysimcha/config | @mysimcha/tsconfig
+apps/web  →  @mysimcha/auth  →  @mysimcha/database  →  @mysimcha/shared
                 │
-                └── @mysimcha/database (data access only)
+apps/*    →  packages/*  →  @mysimcha/shared | @mysimcha/config | @mysimcha/tsconfig
 ```
 
 1. **Apps may depend on packages.** Packages must **never** depend on apps.
-2. **No circular package dependencies.** Prefer depending inward on `shared` / `config` / `database`.
-3. **Provider isolation**
-   - Prisma → `@mysimcha/database` only  
-   - Stripe → `@mysimcha/payments` only  
-   - Cloudinary → `@mysimcha/media` only  
-   - Twilio → `@mysimcha/notifications` only  
-   - OpenAI → `@mysimcha/ai` only  
-   - Google Maps → `@mysimcha/maps` only  
-4. **UI primitives** live in `@mysimcha/ui`. Product compositions live in apps (when pages exist).
-5. **Tenant scope:** any organization data access must include `organizationId`.
-6. **Validation:** Zod at every Server Action / Route Handler boundary (via `@mysimcha/shared` schemas).
-7. **Workspace protocol only:** `"@mysimcha/foo": "workspace:*"` — no relative imports across package roots.
-8. **Brand differences** are configuration (`branding` + DB themes/templates), never new apps or forks.
+2. **No circular package dependencies.**
+3. **Provider isolation** — Prisma only in `database`; Stripe only in `payments`; Cloudinary only in `media`; Twilio only in `notifications`; OpenAI only in `ai`; Maps only in `maps`.
+4. **UI primitives** live in `@mysimcha/ui`. Product compositions live in apps.
+5. **Tenant scope:** organization data access must include `organizationId`.
+6. **Validation:** Zod at Server Action / Route Handler boundaries.
+7. **Workspace protocol only:** `"@mysimcha/foo": "workspace:*"`.
+8. **Brand differences** are configuration, never new apps or forks.
 
 ### Allowed dependency examples
 
@@ -194,7 +173,7 @@ apps/*  →  packages/*  →  @mysimcha/shared | @mysimcha/config | @mysimcha/ts
 | `apps/web` | `@prisma/client` | No — use `@mysimcha/database` |
 | `@mysimcha/payments` | `stripe` | Yes |
 | `@mysimcha/payments` | `@mysimcha/web` | No |
-| `@mysimcha/auth` | `@mysimcha/shared` | Yes |
+| `@mysimcha/auth` | `@mysimcha/database` | Yes |
 | `@mysimcha/ui` | `@mysimcha/database` | No |
 
 ---
@@ -204,24 +183,25 @@ apps/*  →  packages/*  →  @mysimcha/shared | @mysimcha/config | @mysimcha/ts
 ### One-time setup
 
 ```bash
-cp .env.example .env
+cp .env.example .env          # set AUTH_SECRET
 pnpm install
 docker compose up -d          # PostgreSQL + Redis
-pnpm db:generate              # when schema work begins
+pnpm db:generate
+pnpm db:deploy
+pnpm db:seed
 ```
 
 ### Day-to-day
 
 ```bash
-pnpm dev                      # turbo dev across apps that define it
 pnpm --filter=@mysimcha/web dev
 pnpm lint
 pnpm typecheck
 pnpm test
-pnpm format
+pnpm build
 ```
 
-### Ports (planned)
+### Ports
 
 | App | Port |
 |-----|------|
@@ -230,41 +210,21 @@ pnpm format
 | landing | 3002 |
 | docs | 3003 |
 
-### Turborepo
-
-- `turbo.json` defines `dev`, `build`, `lint`, `typecheck`, `test`, and database tasks.
-- Package tasks run with dependency awareness (`dependsOn: ["^…"]`).
-- Remote cache (Vercel) is recommended once CI is stable.
-
-### pnpm workspaces
-
-- `pnpm-workspace.yaml` includes `apps/*`, `packages/*`, `tooling/*`.
-- Use `pnpm --filter=@mysimcha/<name> <script>` for scoped work.
-- Lockfile (`pnpm-lock.yaml`) is the single install source of truth.
-
-### Environment
-
-1. Root `.env.example` = full catalog  
-2. `env/.env.*.example` = per-stage checklists  
-3. Secrets never committed  
-4. Future: Vercel env per app + GitHub Actions secrets  
-
 ### Quality gates
 
-| Gate | Command / tool |
-|------|----------------|
-| Lint | ESLint (`eslint.config.mjs`) |
+| Gate | Tool |
+|------|------|
+| Lint | ESLint |
 | Format | Prettier |
-| Types | `tsc --noEmit` per package/app |
-| Unit | Vitest (packages) |
-| E2E | Playwright (when pages exist) |
-| Schema | `prisma validate` / migrate |
+| Types | `tsc --noEmit` |
+| Unit | Vitest (`shared`, `auth`, `database`) |
+| Schema | `prisma validate` / generate / migrate |
+| E2E | Playwright (not yet) |
 
-### Git
+### Git / CI
 
-- Protect `main`
-- Branch as `feat/*`, `fix/*`, `chore/*`, `docs/*`
-- CI runs install → lint/typecheck/test → Prisma validate
+- Protect `main`; branches `feat/*`, `fix/*`, `chore/*`, `docs/*`
+- CI: install → Prisma validate/generate → lint → typecheck → test → build
 
 ---
 
@@ -272,12 +232,10 @@ pnpm format
 
 | App | Responsibility | Notes |
 |-----|----------------|-------|
-| `landing` | Acquisition, brand storytelling | Aggressive SEO / ISR, multi-domain |
-| `web` | Authenticated product + public guest pages | Mixed caching; invitation runtime |
-| `admin` | Privileged operations | Noindex, strict RBAC |
-| `docs` | Engineering docs | Static docs site |
-
-Separating deploy cadence and caching policies keeps marketing, product, and admin safe from each other.
+| `landing` | Acquisition, brand storytelling | SEO / ISR, multi-domain (future) |
+| `web` | Authenticated product + public guest pages | Sprint 1 auth live |
+| `admin` | Privileged operations | Noindex; auth not wired yet |
+| `docs` | Engineering docs site | Shell; `/docs` markdown is source of truth |
 
 ---
 
@@ -292,25 +250,24 @@ Separating deploy cadence and caching policies keeps marketing, product, and adm
         │                           │                           │
  ┌──────▼──────┐             ┌──────▼──────┐             ┌──────▼──────┐
  │ apps/landing│             │  apps/web   │             │ apps/admin  │
- │ multi-brand │             │ product +   │             │ platform    │
- │ marketing   │             │ guest sites │             │ ops         │
+ │ shell       │             │ auth+dash   │             │ shell       │
+ │ (future SEO)│             │ (Sprint 1)  │             │ (future)    │
  └──────┬──────┘             └──────┬──────┘             └──────┬──────┘
         │                           │                           │
         └───────────────────────────┼───────────────────────────┘
                                     │
                  ┌──────────────────▼──────────────────┐
-                 │     Shared domain packages           │
-                 │ auth payments media ai emails maps   │
-                 │ notifications branding analytics …   │
+                 │  Shared packages (auth/database     │
+                 │  live; payments/media/… stubs)      │
                  └──────────────────┬──────────────────┘
                                     │
               ┌─────────────────────┼─────────────────────┐
               │                     │                     │
        ┌──────▼──────┐       ┌──────▼──────┐       ┌──────▼──────┐
        │ PostgreSQL  │       │    Redis    │       │ Cloudinary  │
+       │ (in use)    │       │ (Compose;   │       │ (not wired) │
+       │             │       │  unused S1) │       │             │
        └─────────────┘       └─────────────┘       └─────────────┘
-
- Stripe · Twilio · Resend · OpenAI · Google Maps · Sentry · PostHog
 ```
 
 ---
@@ -325,55 +282,59 @@ Separating deploy cadence and caching policies keeps marketing, product, and adm
 
 ### Resolution outputs (`BrandContext`)
 
-- `brandId` / `brandSlug`  
-- display name, domains, locales  
-- theme id + design tokens  
-- asset base URL, template set, feature flags  
+- `brandId` / `brandSlug`, locales, theme tokens, asset base URL, feature flags  
 
-Brands are **data + configuration**, not repositories.
+Brands are **data + configuration**, not repositories.  
+**Sprint 1:** static registry in `@mysimcha/branding` exists; **not** wired into app middleware yet.
 
 ---
 
 ## Multi-tenancy
 
-**Model:** shared PostgreSQL database and schema; **row-level isolation** via `organizationId`.
+**Model:** shared PostgreSQL database and schema; isolation via `organizationId`.
 
 | Layer | Mechanism |
 |-------|-----------|
 | Schema | Tenant tables include `organizationId` |
-| Application | Repository helpers require tenant scope |
-| Authorization | Membership + RBAC before mutation |
-| Platform ops | `apps/admin` with elevated roles + audit logs |
+| Application | `@mysimcha/database` helpers + membership checks |
+| Authorization | `@mysimcha/auth` RBAC (`requireMembership` / `assertPermission`) |
+| Platform ops | `apps/admin` later (`PLATFORM_*` roles) |
 
 **Brand vs tenant**
 
 - **Organization** = paying customer (tenant)  
 - **Brand** = product line / site skin  
-- **Event / invitation** belongs to an organization and renders under a brand  
+- **Event / invitation** (future) belongs to an organization and renders under a brand  
+
+**Sprint 1 registration:** creates `User` + `Organization` + `Membership(OWNER)`; active org = first membership.
 
 ---
 
-## Security, SEO, observability (foundation)
+## Security, SEO, observability
 
-- RBAC + Zod validation + rate limiting + audit logs + Sentry  
-- Brand-aware metadata, sitemap, robots, Open Graph, Schema.org (when pages exist)  
-- PostHog for product analytics  
+| Area | Sprint 1 reality |
+|------|------------------|
+| Authn | Credentials + JWT in `@mysimcha/auth` |
+| Authz | Org RBAC helpers; platform admin UI not built |
+| Rate limiting | `RateLimiter` + `MemoryRateLimiter` on login/register (Redis later) |
+| Security headers | Documented; **not in Next config yet** |
+| SEO (OG, sitemap, Schema.org) | Not implemented (web/admin noindex) |
+| Sentry / PostHog | Env placeholders only |
 
 ---
 
 ## MCP integrations (developer machines)
 
-GitHub, Filesystem, Terminal, Docker, PostgreSQL, Prisma, Figma, Playwright, Browser, Stripe, Twilio, Resend, Google Maps, Vercel, Sentry, OpenAI, Claude.
-
-MCP assists development; **runtime product traffic** uses `@mysimcha/*` packages.
+Recommended local MCP servers are listed in the [Development Guide](./development-guide.md).  
+Example config: `.cursor/mcp.json.example` (subset). MCP is optional DX — **runtime** uses `@mysimcha/*` packages.
 
 ---
 
 ## Scalability path
 
-1. **Now:** monorepo foundation + Vercel apps + managed Postgres/Redis + Cloudinary  
-2. **Next:** pooling, ISR/tag revalidation for invitation traffic, read replicas  
-3. **Later:** workers for media/AI, optional RLS — extract services only when package boundaries demand it  
+1. **Now:** monorepo + Sprint 1 auth/tenancy + managed Postgres  
+2. **Next:** branding middleware, invitation traffic patterns, optional RedisRateLimiter  
+3. **Later:** workers, optional RLS — extract services only when package boundaries demand it  
 
 ---
 
@@ -383,30 +344,29 @@ MCP assists development; **runtime product traffic** uses `@mysimcha/*` packages
 |----------|--------|-----|
 | Monorepo | Turborepo + pnpm | Shared code, fast filtered builds |
 | Apps | Next.js 15 × 4 | SSR/SEO + Server Actions |
-| UI runtime | React 19 + TypeScript | Modern, typed, maintainable |
+| Auth (Sprint 1) | Auth.js Credentials + JWT | Auth.js requires JWT for credentials |
 | ORM / DB | Prisma + PostgreSQL | Integrity for tenancy, RSVP, billing |
-| Media | Cloudinary | Transforms + CDN |
-| Payments | Stripe | Subscriptions + webhooks |
-| Messaging | Twilio | SMS / WhatsApp |
-| AI | OpenAI via `@mysimcha/ai` | One AI engine for all brands |
-| Maps | Google Maps | Venue accuracy |
-| Monitoring | Sentry | Production error visibility |
+| Media / payments / messaging / AI | Cloudinary / Stripe / Twilio / OpenAI | Via dedicated packages when implemented |
 
 ---
 
-## Phase status
+## Implementation status
 
 | Item | Status |
 |------|--------|
-| Documentation (canonical `/docs`, archive duplicates) | Done |
+| Documentation (canonical `/docs`) | Done |
 | Monorepo tooling (pnpm, turbo, TS, ESLint, Prettier) | Done |
-| App / package shells | Done |
-| Minimal App Router boot (`web` / `admin` / `landing`) | Done |
-| Initial Prisma migration (`20260724000000_init`) | Done (apply when Postgres is up) |
-| Schema integrity FKs (`AnalyticsEvent` org, `Setting` user) | Done (`20260724010000_…`) |
-| GitHub Actions CI (install, lint, typecheck, test, prisma, build) | Done |
-| Authentication / database wiring in apps | **Not started** |
-| Business features | **Not started** |
+| App shells (`admin` / `landing` / `docs`) | Done |
+| Prisma baseline + integrity FKs | Done (`20260724000000_init`, `20260724010000_…`) |
+| User `passwordHash` migration | Done (`20260725000000_add_user_password_hash`) |
+| GitHub Actions CI | Done |
+| **Sprint 1 — Auth.js credentials, orgs, memberships, web dashboard** | **Completed** |
+| **Sprint 2 — Auth rate limiting (`RateLimiter` + `MemoryRateLimiter`)** | **Completed** (no Redis) |
+| Branding middleware / multi-domain landing | Not started |
+| Invitations / events / RSVP | Not started |
+| Stripe / Twilio / Cloudinary / OpenAI wiring | Not started |
+| Admin platform auth UI | Not started |
+| Redis adapter / Sentry / PostHog | Not started |
 
 ---
 

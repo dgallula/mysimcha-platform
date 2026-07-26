@@ -29,7 +29,9 @@ First commercial brand: **MyBatMitzvah**. All future brands share the same platf
 
 ## Current phase
 
-Bootable Next.js App Router shells (`web`, `admin`, `landing`). Do not create business features, authentication, or database access in apps unless explicitly requested.
+**Sprint 1 completed** — identity & multi-tenant.  
+**Sprint 2 completed** — auth rate limiting (`MemoryRateLimiter`, no Redis).  
+Do not implement invitations, events, or other business features unless explicitly requested.
 
 ## Implementation preferences (when coding is approved)
 
