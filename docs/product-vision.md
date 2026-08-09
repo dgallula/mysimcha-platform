@@ -100,11 +100,11 @@ Example:
 6. SEO  
 7. Clean architecture  
 
-## Out of scope for documentation phase
+## Out of scope (until explicitly approved)
 
-- Application feature implementation  
-- Fake / demo business data  
-- Placeholder business logic  
+- Invitations, events, guest experiences, billing product UI  
+- Presenting integration stubs as finished product features  
+- Per-brand application forks  
 
 ---
 

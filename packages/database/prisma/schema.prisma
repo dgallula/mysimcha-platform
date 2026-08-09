@@ -149,6 +149,8 @@ model User {
   email         String     @unique
   emailVerified DateTime?
   image         String?
+  /// Set for credentials auth; null for OAuth-only users
+  passwordHash  String?
   locale        String     @default("en")
   status        UserStatus @default(ACTIVE)
   platformRole  PlatformRole?

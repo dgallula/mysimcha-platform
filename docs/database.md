@@ -78,7 +78,7 @@ Setting ── Organization or Brand or User scope
 
 | Model | Purpose | Key fields |
 |-------|---------|------------|
-| `User` | Global identity | email (unique), name, image, locale, status |
+| `User` | Global identity | email (unique), name, image, `passwordHash` (credentials), locale, status |
 | `Account` / `Session` / `VerificationToken` | Auth.js tables | per Auth.js schema |
 | `Organization` | Tenant | name, slug, billingEmail |
 | `Membership` | User↔Org | role (`OWNER`, `ADMIN`, `EDITOR`, `VIEWER`) |
@@ -194,13 +194,18 @@ Partial indexes (raw SQL migrations) for soft-delete filters: `WHERE deleted_at 
 packages/database/
 ├── prisma/
 │   ├── schema.prisma
+│   ├── seed.ts            # dev seed (owner@example.com)
 │   └── migrations/
 ├── src/
 │   ├── client.ts          # singleton PrismaClient
-│   ├── tenant.ts          # requireOrganizationId helpers
+│   ├── tenant.ts          # requireOrganizationId / tenantWhere
+│   ├── users.ts           # credentials user accessors + register txn
+│   ├── organizations.ts   # org + membership accessors
 │   └── index.ts
 └── package.json
 ```
+
+**Sprint 1 runtime note:** Auth.js uses **JWT sessions**. `Session` / `Account` / `VerificationToken` tables exist for future OAuth / DB sessions / email verify and are unused by the credentials flow today.
 
 ### Access pattern (mandatory)
 
@@ -302,12 +307,27 @@ Fixes schema integrity without changing product architecture:
 2. `Setting.userId` → `User` (`onDelete: Cascade`)
 3. Index `Setting(userId, key)` for parity with other setting scopes
 
+### Credentials migration: `20260725000000_add_user_password_hash`
+
+Sprint 1 credentials auth:
+
+1. `User.passwordHash` (`TEXT`, nullable) — set for email/password users; null for future OAuth-only users
+
 ```bash
 pnpm --filter=@mysimcha/database db:validate
 pnpm db:generate
 docker compose up -d postgres
 pnpm db:deploy
+pnpm db:seed
 ```
+
+### Applied migrations (ordered)
+
+| Migration | Purpose |
+|-----------|---------|
+| `20260724000000_init` | Baseline schema |
+| `20260724010000_add_analytics_org_and_setting_user_fks` | Org/user FK integrity |
+| `20260725000000_add_user_password_hash` | Credentials `passwordHash` |
 
 ### Apply locally
 

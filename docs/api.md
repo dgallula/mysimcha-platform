@@ -43,20 +43,21 @@ export async function updateEventSettings(input: unknown) {
 
 ---
 
-## Route Handler map (foundation)
+## Route Handler map
 
-| Route | Purpose |
-|-------|---------|
-| `POST /api/auth/*` | Auth.js handlers |
-| `POST /api/webhooks/stripe` | Stripe events |
-| `POST /api/webhooks/resend` | Email events (optional) |
-| `POST /api/webhooks/twilio` | SMS status (optional) |
-| `GET /api/health` | Liveness |
-| `GET /api/ready` | Readiness (DB/Redis) |
-| `POST /api/public/rsvp` | Token-scoped RSVP (future) |
-| `GET /api/public/events/:slug` | Public event payload (future) |
+| Route | Purpose | Status |
+|-------|---------|--------|
+| `GET\|POST /api/auth/*` | Auth.js handlers (`apps/web`) | **Sprint 1 done** |
+| Server Actions | `loginAction`, `registerAction`, `logoutAction` | **Sprint 1 done** |
+| `GET /api/health` | Liveness (`web` / `admin` / `landing` / `docs`) | Done |
+| `GET /api/ready` | Readiness (DB/Redis) | Not implemented |
+| `POST /api/webhooks/stripe` | Stripe events | Not implemented |
+| `POST /api/webhooks/resend` | Email events | Not implemented |
+| `POST /api/webhooks/twilio` | SMS status | Not implemented |
+| `POST /api/public/rsvp` | Token-scoped RSVP | Not implemented |
+| `GET /api/public/events/:slug` | Public event payload | Not implemented |
 
-Admin and landing apps expose only what they need (health + auth).
+`admin` / `landing` / `docs` expose health only (no auth routes yet).
 
 ---
 
