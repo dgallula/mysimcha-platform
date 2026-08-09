@@ -257,6 +257,9 @@ importers:
       '@mysimcha/tsconfig':
         specifier: workspace:*
         version: link:../../tooling/typescript
+      '@types/node':
+        specifier: ^22.20.1
+        version: 22.20.1
       tailwindcss:
         specifier: ^3.4.17
         version: 3.4.19(tsx@4.23.1)
