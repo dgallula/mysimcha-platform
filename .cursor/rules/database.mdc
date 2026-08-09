@@ -1,0 +1,21 @@
+---
+description: Prisma and multi-tenant database rules
+globs: "packages/database/**"
+alwaysApply: false
+---
+
+# Database
+
+- Prisma only inside `@mysimcha/database`. Never query Postgres from apps.
+- Never edit the database by hand. Never edit historical migrations.
+- Every schema change includes: `schema.prisma` + new migration + accessors + `/docs/database.md`.
+- Index columns used in tenant lookups and unique slugs.
+- Tenant rows must be scoped with `organizationId` (see `tenantWhere`).
+
+```ts
+// ❌ BAD
+await prisma.event.findMany({ where: { status: "PUBLISHED" } });
+
+// ✅ GOOD
+await prisma.event.findMany({ where: tenantWhere(organizationId, { status: "PUBLISHED" }) });
+```

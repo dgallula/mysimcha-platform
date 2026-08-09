@@ -1,8 +1,14 @@
-import type { Permission } from "@mysimcha/shared";
+import type { OrgRole, Permission, PlatformRole } from "@mysimcha/shared";
+import { PLATFORM_ROLES } from "@mysimcha/shared";
 import { findMembership } from "@mysimcha/database";
-import type { OrgRole } from "@mysimcha/shared";
 import { auth } from "./config";
-import { assertPermission, AuthorizationError, type MembershipContext, type SessionUser } from "./rbac";
+import {
+  assertPermission,
+  assertPlatformRole,
+  AuthorizationError,
+  type MembershipContext,
+  type SessionUser,
+} from "./rbac";
 
 export async function getSession() {
   return auth();
@@ -44,6 +50,20 @@ export async function requirePermission(organizationId: string, permission: Perm
   const ctx = await requireMembership(organizationId);
   assertPermission(ctx.membership, permission);
   return ctx;
+}
+
+export async function requirePlatformRole(allowed: readonly PlatformRole[] = PLATFORM_ROLES) {
+  const session = await requireSession();
+  assertPlatformRole(
+    {
+      id: session.user.id,
+      email: session.user.email,
+      name: session.user.name,
+      platformRole: session.user.platformRole,
+    },
+    allowed,
+  );
+  return session;
 }
 
 export async function requireActiveOrganization() {

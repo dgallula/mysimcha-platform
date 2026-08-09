@@ -33,6 +33,8 @@ export default tseslint.config(
       "docker/data/**",
       "pnpm-lock.yaml",
       "**/next-env.d.ts",
+      "**/playwright-report/**",
+      "**/test-results/**",
     ],
   },
   eslint.configs.recommended,

@@ -4,7 +4,7 @@ Premium SaaS platform for **digital emotional invitations**.
 
 **Platform:** MySimcha · **First product:** MyBatMitzvah
 
-> **Status:** Sprint 1–2 **completed** — credentials auth, organizations, memberships, protected dashboard, and in-memory auth rate limiting (`RateLimiter` port; no Redis). Invitations, events, and other business features are **not** implemented yet.
+> **Status:** Sprint 1–3 **completed** — credentials auth, organizations, memberships, protected dashboard, in-memory auth rate limiting, security headers, host→brand middleware, `@mysimcha/ui` + Tailwind, admin platform auth, Playwright. Invitations, events, and other business features are **not** implemented yet.
 
 ## Documentation
 
@@ -52,13 +52,17 @@ Open http://localhost:3000 — routes: `/login`, `/register`, `/dashboard`.
 
 Quality gates: `pnpm lint` · `pnpm typecheck` · `pnpm test` · `pnpm build`
 
-## What is in place (Sprint 1)
+## What is in place (Sprint 1–3)
 
-- `@mysimcha/auth` — Auth.js credentials + JWT session + RBAC helpers
-- `@mysimcha/database` — Prisma schema, migrations, user/org accessors, seed
-- `apps/web` — login, register, protected dashboard
-- `apps/admin`, `apps/landing`, `apps/docs` — bootable shells (health only)
+- `@mysimcha/auth` — Auth.js credentials + JWT session + org RBAC + `requirePlatformRole`
+- `@mysimcha/database` — Prisma schema, migrations, user/org accessors, seed (owner + platform admin)
+- `@mysimcha/branding` — host / preview → brand → theme → locale (wired in web, admin, landing middleware)
+- `@mysimcha/ui` — Button, Input, Label, Card + Tailwind tokens
+- `apps/web` — login, register, protected dashboard, Playwright auth e2e
+- `apps/admin` — platform login + dashboard (`PLATFORM_*` only)
+- `apps/landing` — brand-aware marketing shell
+- `apps/docs` — shell + security headers
 
 ## Next
 
-Further product work (branding middleware, events, invitations, billing, etc.) only after explicit approval.
+Further product work (events, invitations, billing, etc.) only after explicit approval.

@@ -14,8 +14,7 @@ All products share one codebase, backend, database, auth, payments, AI engine, a
 
 ## Current phase
 
-**Sprint 1 completed** — identity & multi-tenant.  
-**Sprint 2 completed** — auth rate limiting via `RateLimiter` + `MemoryRateLimiter` (no Redis).  
+**Sprint 1–3 completed** — identity, multi-tenant, in-memory auth rate limiting, security headers, branding middleware, `@mysimcha/ui` primitives, admin `PLATFORM_*` auth, Playwright on web auth.  
 Do **not** implement invitations, events, or other business features unless explicitly asked.
 
 ## Read first

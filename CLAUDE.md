@@ -29,8 +29,7 @@ First commercial brand: **MyBatMitzvah**. All future brands share the same platf
 
 ## Current phase
 
-**Sprint 1 completed** — identity & multi-tenant.  
-**Sprint 2 completed** — auth rate limiting (`MemoryRateLimiter`, no Redis).  
+**Sprint 1–3 completed** — identity, multi-tenant, in-memory auth rate limiting, security headers, branding middleware, UI primitives, admin platform auth, Playwright.  
 Do not implement invitations, events, or other business features unless explicitly requested.
 
 ## Implementation preferences (when coding is approved)

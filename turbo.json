@@ -7,7 +7,12 @@
     "DATABASE_URL",
     "REDIS_URL",
     "AUTH_SECRET",
-    "AUTH_URL"
+    "AUTH_URL",
+    "DEFAULT_BRAND",
+    "DEFAULT_THEME",
+    "DEFAULT_LOCALE",
+    "AUTH_RATE_LIMIT_MAX",
+    "AUTH_RATE_LIMIT_WINDOW_MS"
   ],
   "tasks": {
     "build": {

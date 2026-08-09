@@ -23,7 +23,7 @@
 | Host trust | Prefer `AUTH_TRUST_HOST` only in known environments |
 | Cookies | `__Secure-` / `HttpOnly` / `SameSite=Lax` (Strict where possible) |
 
-`apps/admin` is still an unauthenticated shell. Platform roles (`PLATFORM_*`) are modeled; admin auth UI is **not** wired yet.
+`apps/admin` requires a `PLATFORM_*` session (`requirePlatformRole`). Organization owners without a platform role are rejected. Seed: `admin@example.com` / `password123`.
 
 ---
 
@@ -66,7 +66,7 @@ Guest/public actions use **token capabilities** (invitation token, QR nonce), no
 | Auth gate | Session required unless public procedure |
 | AuthZ gate | Membership + permission |
 | Idempotency | Stripe webhooks & payment intents keyed |
-| HTTP headers | CSP, HSTS, X-Content-Type-Options, Referrer-Policy, Permissions-Policy |
+| HTTP headers | Shared `nextSecurityHeaders()` — CSP, HSTS (prod), X-Content-Type-Options, Referrer-Policy, Permissions-Policy, X-Frame-Options |
 | CORS | Restrict to known brand domains + app URLs |
 
 Server Actions are treated as public endpoints — same validation and authz as REST.
@@ -163,8 +163,8 @@ Minimize PII in analytics; prefer hashed IDs where possible.
 
 ## Security testing
 
-- Vitest policy unit tests for RBAC matrix
-- Playwright tests ensuring unauthorized routes redirect
+- Vitest policy unit tests for RBAC matrix (org + platform)
+- Playwright (`apps/web/e2e`) — unauthenticated `/dashboard` redirect + seed login
 - Periodic dependency scanning in CI
 - Sentry for anomaly breadcrumbs (no secrets)
 

@@ -1,0 +1,22 @@
+---
+description: Premium UI standards for customer-facing surfaces
+globs: "**/*.{tsx,css}"
+alwaysApply: false
+---
+
+# UI design
+
+- Feel: Apple / Linear / Stripe / Framer — luxury, not generic Bootstrap.
+- Stack: Tailwind + `@mysimcha/ui` (shadcn-style primitives). No one-off ugly defaults.
+- Mobile first. Keyboard and screen-reader accessible. Visible `:focus-visible`.
+- Honor `prefers-reduced-motion`. Brand tokens come from `@mysimcha/branding`, not hardcoded hex in pages.
+- Framer Motion later; do not add motion that ignores reduced-motion.
+
+```tsx
+// ❌ BAD
+<button style={{ background: "blue" }}>Save</button>
+
+// ✅ GOOD
+import { Button } from "@mysimcha/ui";
+<Button type="submit">Save</Button>
+```

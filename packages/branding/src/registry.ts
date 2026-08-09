@@ -141,6 +141,7 @@ export type ResolveBrandInput = {
   brandSlug?: string | null;
   themeSlug?: string | null;
   locale?: string | null;
+  fallbackSlug?: string | null;
 };
 
 /**
@@ -157,6 +158,10 @@ export function resolveBrand(input: ResolveBrandInput = {}): BrandContext {
     definition = Object.values(BRAND_REGISTRY).find((b) =>
       b.domains.some((d) => d === host || host.endsWith(`.${d}`)),
     );
+  }
+
+  if (!definition && input.fallbackSlug && input.fallbackSlug in BRAND_REGISTRY) {
+    definition = BRAND_REGISTRY[input.fallbackSlug as BrandSlug];
   }
 
   definition ??= BRAND_REGISTRY.mybatmitzvah;

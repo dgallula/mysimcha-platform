@@ -1,13 +1,12 @@
 import { redirect } from "next/navigation";
-import type { CSSProperties } from "react";
-import {
-  AuthorizationError,
-  requireActiveOrganization,
-} from "@mysimcha/auth";
+import { AuthorizationError, requireActiveOrganization } from "@mysimcha/auth";
 import { listMembershipsForUser } from "@mysimcha/database";
+import { Button, Card } from "@mysimcha/ui";
 import { logoutAction } from "@/app/actions/auth";
+import { getRequestBrand } from "@/lib/brand";
 
 export default async function DashboardPage() {
+  const brand = await getRequestBrand();
   let ctx;
   try {
     ctx = await requireActiveOrganization();
@@ -22,83 +21,44 @@ export default async function DashboardPage() {
   const active = memberships.find((m) => m.organizationId === ctx.membership.organizationId);
 
   return (
-    <main style={styles.main}>
-      <header style={styles.header}>
+    <main className="mx-auto min-h-screen max-w-3xl px-6 py-10">
+      <header className="mb-10 flex items-start justify-between gap-4">
         <div>
-          <p style={styles.brand}>MySimcha</p>
-          <h1 style={styles.h1}>Dashboard</h1>
+          <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">{brand.displayName}</p>
+          <h1 className="mt-2 font-display text-4xl font-medium">Dashboard</h1>
         </div>
         <form action={logoutAction}>
-          <button type="submit" style={styles.logout}>
+          <Button type="submit" variant="outline" size="sm">
             Log out
-          </button>
+          </Button>
         </form>
       </header>
 
-      <section style={styles.section}>
-        <h2 style={styles.h2}>Signed in</h2>
-        <p style={styles.meta}>
-          {ctx.user.name ?? "User"} · {ctx.user.email}
-        </p>
-      </section>
-
-      <section style={styles.section}>
-        <h2 style={styles.h2}>Active organization</h2>
-        <p style={styles.meta}>
-          {active?.organization.name ?? ctx.membership.organizationId}
-        </p>
-        <p style={styles.meta}>Role: {ctx.membership.role}</p>
-        <p style={styles.meta}>Org ID: {ctx.membership.organizationId}</p>
-      </section>
-
-      <section style={styles.section}>
-        <h2 style={styles.h2}>Your memberships</h2>
-        <ul style={styles.list}>
-          {memberships.map((m) => (
-            <li key={m.id}>
-              {m.organization.name} ({m.role})
-            </li>
-          ))}
-        </ul>
-      </section>
+      <div className="grid gap-4">
+        <Card>
+          <h2 className="font-display text-xl">Signed in</h2>
+          <p className="mt-2 text-sm text-muted-foreground">
+            {ctx.user.name ?? "User"} · {ctx.user.email}
+          </p>
+        </Card>
+        <Card>
+          <h2 className="font-display text-xl">Active organization</h2>
+          <p className="mt-2 text-sm text-muted-foreground">
+            {active?.organization.name ?? ctx.membership.organizationId}
+          </p>
+          <p className="mt-1 text-sm text-muted-foreground">Role: {ctx.membership.role}</p>
+        </Card>
+        <Card>
+          <h2 className="font-display text-xl">Your memberships</h2>
+          <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-muted-foreground">
+            {memberships.map((m) => (
+              <li key={m.id}>
+                {m.organization.name} ({m.role})
+              </li>
+            ))}
+          </ul>
+        </Card>
+      </div>
     </main>
   );
 }
-
-const styles: Record<string, CSSProperties> = {
-  main: {
-    minHeight: "100vh",
-    padding: "2rem",
-    maxWidth: 720,
-    margin: "0 auto",
-    fontFamily: "Georgia, 'Times New Roman', serif",
-    color: "#1a1a1a",
-    background:
-      "radial-gradient(ellipse at top, #f7f3eb 0%, #ebe4d6 45%, #e2d9c8 100%)",
-  },
-  header: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-    marginBottom: "2rem",
-  },
-  brand: {
-    fontSize: "0.85rem",
-    letterSpacing: "0.18em",
-    textTransform: "uppercase",
-    margin: 0,
-    color: "#5c5346",
-  },
-  h1: { fontSize: "1.75rem", fontWeight: 500, margin: "0.5rem 0 0" },
-  h2: { fontSize: "1.1rem", fontWeight: 500, margin: "0 0 0.5rem" },
-  section: { marginBottom: "1.75rem" },
-  meta: { margin: "0.25rem 0", color: "#4a4338" },
-  list: { margin: 0, paddingLeft: "1.25rem", color: "#4a4338" },
-  logout: {
-    background: "transparent",
-    border: "1px solid #1a1a1a",
-    padding: "0.5rem 0.9rem",
-    cursor: "pointer",
-    fontFamily: "inherit",
-  },
-};

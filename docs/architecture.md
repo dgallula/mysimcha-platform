@@ -4,7 +4,7 @@
 
 Define the production-grade technical architecture for a **scalable multi-brand SaaS** that powers premium digital emotional invitations.
 
-**Current phase:** Sprint 1 completed; Sprint 2 auth rate limiting (**MemoryRateLimiter**, no Redis) completed.  
+**Current phase:** Sprint 1–3 completed (identity, rate limiting, security headers, branding middleware, UI primitives, admin platform auth, Playwright).  
 **Next:** further work only when explicitly approved. Invitations, events, and other business features are **not** implemented.
 
 ## Quality bar
@@ -22,7 +22,7 @@ Priorities: scalability → security → maintainability → DX → performance 
 - Next.js 15 (App Router)
 - React 19
 - TypeScript
-- Tailwind CSS + shadcn/ui via `@mysimcha/ui` (**planned**; web currently uses minimal inline styles)
+- Tailwind CSS + shadcn-style primitives via `@mysimcha/ui` (**Sprint 3**)
 - Framer Motion / GSAP / Lottie (motion layer — later)
 
 ### Backend
@@ -56,7 +56,7 @@ Priorities: scalability → security → maintainability → DX → performance 
 - Docker / Docker Compose (local Postgres + Redis)
 - Vercel (Next.js apps) — planned deploy target
 - GitHub Actions CI (install → Prisma validate/generate → lint → typecheck → test → build)
-- Vitest (unit). Playwright when guest/product pages exist.
+- Vitest (unit). Playwright e2e on `apps/web` auth (Sprint 3).
 
 ### Monorepo tooling
 
@@ -73,12 +73,12 @@ Priorities: scalability → security → maintainability → DX → performance 
 ```text
 mysimcha-platform/
 ├── apps/
-│   ├── web/                 # Customer app (Sprint 1 auth + dashboard)
-│   ├── admin/               # Platform administration (shell)
-│   ├── landing/             # Multi-brand marketing (shell)
+│   ├── web/                 # Customer app (auth + dashboard)
+│   ├── admin/               # Platform administration (PLATFORM_* auth)
+│   ├── landing/             # Multi-brand marketing (brand-aware shell)
 │   └── docs/                # Technical documentation site (shell)
 ├── packages/
-│   ├── ui/                  # Design system (minimal Button)
+│   ├── ui/                  # Design system primitives
 │   ├── database/            # Prisma + PostgreSQL access
 │   ├── auth/                # Authentication + RBAC
 │   ├── payments/            # Stripe (contract)
@@ -121,10 +121,10 @@ Apps are **composition roots**: routing, layouts, and wiring packages together.
 
 | App | Status |
 |-----|--------|
-| `web` | Sprint 1: `/login`, `/register`, `/dashboard`, `/api/auth/*`, `/api/health`; uses `@mysimcha/auth` + `@mysimcha/database` |
-| `admin` | Shell: home + `/api/health` (no auth yet) |
-| `landing` | Shell: home + `/api/health` |
-| `docs` | Shell: home + `/api/health` |
+| `web` | `/login`, `/register`, `/dashboard`, `/api/auth/*`, `/api/health`; branding middleware + Tailwind UI |
+| `admin` | `/login`, `/dashboard`, `/api/auth/*`, `/api/health`; `PLATFORM_*` required |
+| `landing` | Brand-aware marketing shell + `/api/health` |
+| `docs` | Shell: home + `/api/health` + security headers |
 
 ### `packages/`
 
@@ -133,9 +133,9 @@ Apps are **composition roots**: routing, layouts, and wiring packages together.
 | `@mysimcha/database` | Prisma schema, client, tenant helpers, user/org accessors, seed | **Sprint 1 done** |
 | `@mysimcha/auth` | Auth.js + password hashing + RBAC helpers | **Sprint 1 done** |
 | `@mysimcha/shared` | Result types, IDs, permissions, auth Zod schemas | **Sprint 1 done** |
-| `@mysimcha/branding` | Domain → brand → theme registry | Partial (static registry) |
-| `@mysimcha/ui` | Design-system primitives | Minimal (Button) |
-| `@mysimcha/config` | Env schema, Tailwind preset | Partial |
+| `@mysimcha/branding` | Domain → brand → theme registry + request headers | **Sprint 3 wired** (static registry) |
+| `@mysimcha/ui` | Design-system primitives | Button, Input, Label, Card |
+| `@mysimcha/config` | Env schema, Tailwind preset, security headers | **Sprint 3** |
 | `@mysimcha/payments` / `emails` / `notifications` / `media` / `ai` / `maps` / `analytics` | Provider boundaries | Contract stubs |
 
 ### `tooling/` / `env/` / `docs/` / `docker/`
@@ -217,14 +217,14 @@ pnpm build
 | Lint | ESLint |
 | Format | Prettier |
 | Types | `tsc --noEmit` |
-| Unit | Vitest (`shared`, `auth`, `database`) |
+| Unit | Vitest (`shared`, `auth`, `database`, `branding`) |
 | Schema | `prisma validate` / generate / migrate |
-| E2E | Playwright (not yet) |
+| E2E | Playwright (`apps/web`) |
 
 ### Git / CI
 
 - Protect `main`; branches `feat/*`, `fix/*`, `chore/*`, `docs/*`
-- CI: install → Prisma validate/generate → lint → typecheck → test → build
+- CI: install → Prisma validate/generate → lint → typecheck → test → build (+ Playwright e2e job)
 
 ---
 
@@ -233,8 +233,8 @@ pnpm build
 | App | Responsibility | Notes |
 |-----|----------------|-------|
 | `landing` | Acquisition, brand storytelling | SEO / ISR, multi-domain (future) |
-| `web` | Authenticated product + public guest pages | Sprint 1 auth live |
-| `admin` | Privileged operations | Noindex; auth not wired yet |
+| `web` | Authenticated product + public guest pages | Auth + branding live |
+| `admin` | Privileged operations | Noindex; `PLATFORM_*` auth |
 | `docs` | Engineering docs site | Shell; `/docs` markdown is source of truth |
 
 ---
@@ -285,7 +285,7 @@ pnpm build
 - `brandId` / `brandSlug`, locales, theme tokens, asset base URL, feature flags  
 
 Brands are **data + configuration**, not repositories.  
-**Sprint 1:** static registry in `@mysimcha/branding` exists; **not** wired into app middleware yet.
+**Sprint 3:** static registry in `@mysimcha/branding` is resolved in middleware from `Host`, `?brand=` preview, or `DEFAULT_BRAND`.
 
 ---
 
@@ -317,8 +317,8 @@ Brands are **data + configuration**, not repositories.
 | Authn | Credentials + JWT in `@mysimcha/auth` |
 | Authz | Org RBAC helpers; platform admin UI not built |
 | Rate limiting | `RateLimiter` + `MemoryRateLimiter` on login/register (Redis later) |
-| Security headers | Documented; **not in Next config yet** |
-| SEO (OG, sitemap, Schema.org) | Not implemented (web/admin noindex) |
+| Security headers | CSP, frame deny, nosniff, Referrer-Policy, Permissions-Policy; HSTS in production |
+| SEO (OG, sitemap, Schema.org) | Not implemented (web/admin/docs `noindex`; landing indexable) |
 | Sentry / PostHog | Env placeholders only |
 
 ---
@@ -332,8 +332,8 @@ Example config: `.cursor/mcp.json.example` (subset). MCP is optional DX — **ru
 
 ## Scalability path
 
-1. **Now:** monorepo + Sprint 1 auth/tenancy + managed Postgres  
-2. **Next:** branding middleware, invitation traffic patterns, optional RedisRateLimiter  
+1. **Now:** monorepo + auth/tenancy + branding middleware + managed Postgres  
+2. **Next:** invitation traffic patterns, optional RedisRateLimiter  
 3. **Later:** workers, optional RLS — extract services only when package boundaries demand it  
 
 ---
@@ -362,10 +362,9 @@ Example config: `.cursor/mcp.json.example` (subset). MCP is optional DX — **ru
 | GitHub Actions CI | Done |
 | **Sprint 1 — Auth.js credentials, orgs, memberships, web dashboard** | **Completed** |
 | **Sprint 2 — Auth rate limiting (`RateLimiter` + `MemoryRateLimiter`)** | **Completed** (no Redis) |
-| Branding middleware / multi-domain landing | Not started |
+| **Sprint 3 — Headers, branding middleware, UI, admin auth, Playwright** | **Completed** |
 | Invitations / events / RSVP | Not started |
 | Stripe / Twilio / Cloudinary / OpenAI wiring | Not started |
-| Admin platform auth UI | Not started |
 | Redis adapter / Sentry / PostHog | Not started |
 
 ---

@@ -47,8 +47,8 @@ export async function updateEventSettings(input: unknown) {
 
 | Route | Purpose | Status |
 |-------|---------|--------|
-| `GET\|POST /api/auth/*` | Auth.js handlers (`apps/web`) | **Sprint 1 done** |
-| Server Actions | `loginAction`, `registerAction`, `logoutAction` | **Sprint 1 done** |
+| `GET\|POST /api/auth/*` | Auth.js handlers (`apps/web`, `apps/admin`) | **Done** |
+| Server Actions | web `loginAction` / `registerAction` / `logoutAction`; admin `adminLoginAction` | **Done** |
 | `GET /api/health` | Liveness (`web` / `admin` / `landing` / `docs`) | Done |
 | `GET /api/ready` | Readiness (DB/Redis) | Not implemented |
 | `POST /api/webhooks/stripe` | Stripe events | Not implemented |
@@ -57,7 +57,7 @@ export async function updateEventSettings(input: unknown) {
 | `POST /api/public/rsvp` | Token-scoped RSVP | Not implemented |
 | `GET /api/public/events/:slug` | Public event payload | Not implemented |
 
-`admin` / `landing` / `docs` expose health only (no auth routes yet).
+`landing` / `docs` expose health only. `admin` mounts Auth.js + platform login.
 
 ---
 

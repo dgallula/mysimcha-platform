@@ -4,7 +4,7 @@
 
 How engineers and AI agents work on MySimcha safely and consistently.
 
-**Current phase:** Sprint 1 completed; Sprint 2 auth rate limiting (in-memory, no Redis) completed.  
+**Current phase:** Sprint 1–3 completed.  
 Do **not** implement invitations, events, or other business features unless explicitly asked.
 
 ## Prerequisites
@@ -45,9 +45,9 @@ pnpm --filter=@mysimcha/web dev
 
 | App | Port | Status |
 |-----|------|--------|
-| web | 3000 | Sprint 1 auth + dashboard |
-| admin | 3001 | Shell (`/api/health`) |
-| landing | 3002 | Shell (`/api/health`) |
+| web | 3000 | Auth + dashboard + branding |
+| admin | 3001 | Platform auth (`PLATFORM_*`) |
+| landing | 3002 | Brand-aware marketing shell |
 | docs | 3003 | Shell (`/api/health`) |
 
 ### Auth routes (`apps/web`)
@@ -59,7 +59,7 @@ pnpm --filter=@mysimcha/web dev
 | `/dashboard` | Protected; requires session |
 | `/api/auth/*` | Auth.js handlers |
 
-Seed (dev only): `owner@example.com` / `password123`
+Seed (dev only): `owner@example.com` / `password123` (org owner) · `admin@example.com` / `password123` (platform super)
 
 ## Monorepo commands
 
@@ -81,11 +81,11 @@ Seed (dev only): `owner@example.com` / `password123`
 - Never call Stripe / Cloudinary / Twilio / OpenAI / Maps SDKs outside their packages  
 - Put new shared code in the correct package — do not dump everything into `shared`  
 
-## Branding locally (not wired in Sprint 1)
+## Branding locally
 
-- `DEFAULT_BRAND=mybatmitzvah` in `.env` (reserved)  
-- Static registry exists in `@mysimcha/branding`  
-- Host/middleware brand resolution is **not** implemented yet  
+- `DEFAULT_BRAND=mybatmitzvah` (fallback when host is unknown, e.g. localhost)  
+- Preview: `?brand=mywedding` on web/landing  
+- Middleware sets `x-mysimcha-brand` / theme / locale; layouts apply CSS variables  
 
 ## Environment & secrets
 
@@ -96,12 +96,12 @@ Seed (dev only): `owner@example.com` / `password123`
 
 ## Quality gates
 
-| Layer | Tool | Sprint 1 |
+| Layer | Tool | Sprint 3 |
 |-------|------|----------|
-| Unit | Vitest | `shared`, `auth`, `database` |
+| Unit | Vitest | `shared`, `auth`, `database`, `branding` |
 | Types | TypeScript strict | CI enforced |
 | Lint | ESLint | CI enforced |
-| E2E | Playwright | Not yet |
+| E2E | Playwright | `apps/web` auth (`pnpm test:e2e`) |
 | Errors | Sentry | Env only |
 
 Every PR should keep tenant isolation and RBAC intact.
@@ -141,7 +141,7 @@ Full recommended list (when useful): GitHub, Filesystem, Docker, PostgreSQL, Pri
 1. ~~Monorepo bootstrap~~  
 2. ~~Auth.js + organizations / memberships (Sprint 1)~~ **completed**  
 3. ~~Auth rate limiting — `RateLimiter` + `MemoryRateLimiter` (Sprint 2)~~ **completed** (no Redis)  
-4. Branding middleware / further hardening (when approved)  
+4. ~~Branding middleware / hardening (Sprint 3)~~ **completed**  
 5. Event / invitation core  
 6. Guest public pages + RSVP  
 7. Media (Cloudinary)  

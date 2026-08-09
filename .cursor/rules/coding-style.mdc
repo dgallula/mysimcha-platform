@@ -1,0 +1,28 @@
+---
+description: TypeScript and coding standards
+globs: "**/*.{ts,tsx}"
+alwaysApply: false
+---
+
+# Coding style
+
+- TypeScript strict. Avoid `any` without justification.
+- `verbatimModuleSyntax`: use `import type` for types.
+- Validate every trust boundary with Zod (`@mysimcha/shared` or colocated schemas).
+- Named exports for shared helpers. No silent catch blocks.
+- Workspace deps use `"@mysimcha/foo": "workspace:*"`.
+
+```ts
+// ❌ BAD
+try {
+  await save(input);
+} catch (e) {}
+
+// ✅ GOOD
+const data = schema.parse(input);
+try {
+  await save(data);
+} catch (error) {
+  throw error;
+}
+```

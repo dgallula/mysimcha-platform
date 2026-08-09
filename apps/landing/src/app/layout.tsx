@@ -1,15 +1,26 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
+import { tokensToCssVariables } from "@mysimcha/branding";
+import "@mysimcha/ui/globals.css";
+import { getRequestBrand } from "@/lib/brand";
 
-export const metadata: Metadata = {
-  title: "MySimcha",
-  description: "MySimcha marketing",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const brand = await getRequestBrand();
+  return {
+    title: brand.displayName,
+    description: `${brand.displayName} — premium digital invitations`,
+  };
+}
 
-export default function RootLayout({ children }: { children: ReactNode }) {
+export default async function RootLayout({ children }: { children: ReactNode }) {
+  const brand = await getRequestBrand();
+  const cssVars = tokensToCssVariables(brand.themeTokens);
+
   return (
-    <html lang="en">
-      <body>{children}</body>
+    <html lang={brand.defaultLocale} data-brand={brand.brandSlug}>
+      <body className="min-h-screen bg-background font-body text-foreground antialiased" style={cssVars}>
+        {children}
+      </body>
     </html>
   );
 }

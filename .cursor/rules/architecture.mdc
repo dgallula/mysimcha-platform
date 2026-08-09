@@ -1,0 +1,21 @@
+---
+description: Clean Architecture and package boundaries for MySimcha
+alwaysApply: true
+---
+
+# Architecture
+
+- One codebase for all brands. Brand differences are config + themes, never app forks.
+- Apps are composition roots. Packages never import from `apps/*`.
+- Prisma only in `@mysimcha/database`. Stripe → `@mysimcha/payments`. Cloudinary → `@mysimcha/media`. Twilio → `@mysimcha/notifications`. OpenAI → `@mysimcha/ai`. Maps → `@mysimcha/maps`.
+- Tenant data access always includes `organizationId`. Never trust client-sent roles.
+- Prefer Server Components. Client Components only for interactivity.
+- Before changing auth, tenancy, or billing architecture, ask for approval.
+
+```ts
+// ❌ BAD — Prisma in an app
+import { PrismaClient } from "@prisma/client";
+
+// ✅ GOOD
+import { findMembership } from "@mysimcha/database";
+```

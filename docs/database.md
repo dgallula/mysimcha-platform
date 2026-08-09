@@ -194,7 +194,7 @@ Partial indexes (raw SQL migrations) for soft-delete filters: `WHERE deleted_at 
 packages/database/
 ├── prisma/
 │   ├── schema.prisma
-│   ├── seed.ts            # dev seed (owner@example.com)
+│   ├── seed.ts            # dev seed (owner + platform admin)
 │   └── migrations/
 ├── src/
 │   ├── client.ts          # singleton PrismaClient

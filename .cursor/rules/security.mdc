@@ -1,0 +1,22 @@
+---
+description: Authn, AuthZ, secrets, and tenant isolation
+alwaysApply: true
+---
+
+# Security
+
+- Authenticate via `@mysimcha/auth`. Never trust client-sent roles.
+- Mutations: session → membership/`organizationId` → `assertPermission` → Zod parse.
+- Admin surfaces require `PLATFORM_*` via `requirePlatformRole`. Org owners are not platform admins.
+- Rate-limit auth with `assertAuthRateLimits`. Do not add Redis unless approved.
+- Never commit secrets. `.env.example` is the contract.
+- Report errors without leaking secrets or unnecessary PII.
+
+```ts
+// ❌ BAD
+assertPermission({ role: body.role, organizationId: body.orgId }, "org:delete");
+
+// ✅ GOOD
+const { membership } = await requireMembership(organizationId);
+assertPermission(membership, "org:delete");
+```

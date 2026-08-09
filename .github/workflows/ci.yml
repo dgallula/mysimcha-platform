@@ -58,3 +58,57 @@ jobs:
 
       - name: Build
         run: pnpm build
+
+  e2e:
+    name: Playwright web auth
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      DATABASE_URL: postgresql://mysimcha:mysimcha@localhost:5432/mysimcha?schema=public
+      AUTH_SECRET: ci-auth-secret-must-be-at-least-32-chars
+      AUTH_URL: http://127.0.0.1:3000
+      AUTH_RATE_LIMIT_MAX: "100"
+      TURBO_TELEMETRY_DISABLED: "1"
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: mysimcha
+          POSTGRES_PASSWORD: mysimcha
+          POSTGRES_DB: mysimcha
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U mysimcha -d mysimcha"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Prisma generate
+        run: pnpm db:generate
+
+      - name: Migrate and seed
+        run: pnpm db:deploy && pnpm db:seed
+
+      - name: Install Playwright Chromium
+        run: pnpm --filter @mysimcha/web exec playwright install --with-deps chromium
+
+      - name: Run e2e
+        run: pnpm test:e2e

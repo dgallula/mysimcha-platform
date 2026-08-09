@@ -2,14 +2,13 @@ import { hash } from "bcryptjs";
 import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
+const DEV_PASSWORD = "password123";
 
-async function main() {
+async function seedOwner() {
   const email = "owner@example.com";
-  const passwordHash = await hash("password123", 12);
-
   const existing = await prisma.user.findUnique({ where: { email } });
   if (existing) {
-    console.log("Seed user already exists:", email);
+    console.warn("Seed owner already exists:", email);
     return;
   }
 
@@ -17,7 +16,7 @@ async function main() {
     data: {
       email,
       name: "Demo Owner",
-      passwordHash,
+      passwordHash: await hash(DEV_PASSWORD, 12),
       status: "ACTIVE",
       memberships: {
         create: {
@@ -37,9 +36,43 @@ async function main() {
     },
   });
 
-  console.log("Seeded user:", user.email);
-  console.log("Organization:", user.memberships[0]?.organization.slug);
-  console.log("Password: password123");
+  console.warn("Seeded owner:", user.email);
+  console.warn("Organization:", user.memberships[0]?.organization.slug);
+}
+
+async function seedPlatformAdmin() {
+  const email = "admin@example.com";
+  const existing = await prisma.user.findUnique({ where: { email } });
+  if (existing) {
+    if (!existing.platformRole) {
+      await prisma.user.update({
+        where: { id: existing.id },
+        data: { platformRole: "PLATFORM_SUPER" },
+      });
+      console.warn("Updated existing user to PLATFORM_SUPER:", email);
+    } else {
+      console.warn("Seed platform admin already exists:", email);
+    }
+    return;
+  }
+
+  await prisma.user.create({
+    data: {
+      email,
+      name: "Platform Super",
+      passwordHash: await hash(DEV_PASSWORD, 12),
+      status: "ACTIVE",
+      platformRole: "PLATFORM_SUPER",
+    },
+  });
+
+  console.warn("Seeded platform admin:", email);
+}
+
+async function main() {
+  await seedOwner();
+  await seedPlatformAdmin();
+  console.warn("Dev password:", DEV_PASSWORD);
 }
 
 main()
